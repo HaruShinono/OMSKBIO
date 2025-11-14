@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}OMSK - Great Trial System Interface{% endblock %}
+
+{% block content %}
+<style>
+    .shake { animation: screen-shake 0.5s ease-in-out; }
+    @keyframes screen-shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    .silo-container {
+        height: 470px;
+        background: linear-gradient(180deg, #05101a, #0d1f30);
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 0 20px rgba(0,0,0,0.5) inset;
+    }
+    .silo-door {
+        position: absolute; top: 0; width: 50%; height: 20px;
+        background: #334155;
+        transition: transform 1s ease-in-out;
+        z-index: 3;
+    }
+    .silo-door.left { left: 0; }
+    .silo-door.right { right: 0; }
+    .silo-container.armed .silo-door.left { transform: translateX(-100%); }
+    .silo-container.armed .silo-door.right { transform: translateX(100%); }
+    .missile-assembly {
+        position: absolute;
+        bottom: -350px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 50px;
+        height: 400px;
+        transition: bottom 5s cubic-bezier(0.6, 0.04, 0.98, 0.335);
+        z-index: 2;
+    }
+    .silo-container.launch .missile-assembly { bottom: 120%; }
+    .missile-body {
+        width: 100%;
+        height: 100%;
+    }
+    .flame {
+        position: absolute;
+        bottom: -80px; /* Positioned below the missile base */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 0px; /* Starts hidden */
+        background: linear-gradient(180deg, white, orange, red);
+        border-radius: 0 0 50% 50%;
+        opacity: 0;
+    }
+    .silo-container.launch .flame {
+        animation: flame-flicker 0.1s infinite, flame-grow 0.5s forwards;
+    }
+    @keyframes flame-grow { to { height: 100px; opacity: 1; } }
+    @keyframes flame-flicker {
+        0%, 100% { transform: translateX(-50%) scaleY(1); }
+        50% { transform: translateX(-50%) scaleY(0.8) scaleX(1.1); }
+    }
+    .smoke {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        width: 100px;
+        height: 100px;
+        background: #e2e8f0;
+        border-radius: 50%;
+        opacity: 0;
+        transform: translateX(-50%);
+        z-index: 1;
+    }
+    .silo-container.launch .smoke { animation: smoke-puff 5s ease-out forwards; }
+    @keyframes smoke-puff {
+        0% { opacity: 0; transform: translateX(-50%) scale(0.2); }
+        10% { opacity: 0.8; }
+        100% { opacity: 0; transform: translateX(-50%) scale(4); }
+    }
+</style>
+
+<div class="nuclear-container">
+    <div class="panel left">
+      <div class="status">
+        <div class="flex-grow">
+          <div class="row"><div class="indicator ind-safe" id="stateIndicator"></div><div class="title" id="stateTitle">STANDBY</div></div>
+          <div class="small">"GREAT TRIAL" SYSTEM COMMAND TERMINAL</div>
+        </div>
+        <div class="text-right">
+          <div class="small">Operator:</div>
+          <div class="font-bold">{{ name }}</div>
+          <a href="{{ url_for('logout') }}" style="font-size: 12px; color: var(--accent); text-decoration: none; margin-top: 4px; display: inline-block;">LOGOUT</a>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="row">
+          <div class="flex-grow">
+            <label class="small">Weapon Safety</label>
+            <div class="switch-row">
+              <div class="switch" id="safetySwitch" title="Toggle safety"><div class="knob"></div></div>
+              <div class="small" id="safetyLabel">ENGAGED</div>
+            </div>
+          </div>
+          <div style="width:140px">
+            <label class="small">Target Coordinates</label>
+            <input id="targetId" placeholder="GRID-DELTA-01" class="target-input"/>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn-arm btn-wide" id="btnArm">ARM</button>
+          <button class="btn-disarm btn-wide" id="btnDisarm">DISARM</button>
+        </div>
+        <div class="countdown" id="countdown">STANDBY</div>
+        <div class="row">
+          <button class="btn-launch btn-wide" id="btnLaunch">Execute Launch</button>
+          <button class="btn-abort btn-wide" id="btnAbort">Abort</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel right">
+      <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+        <div><strong>LAUNCH BAY VIEW</strong></div>
+        <div class="small">MODE: <span class="kbd">STRATEGIC</span></div>
+      </div>
+      <div id="siloContainer" class="silo-container">
+          <div class="silo-door left"></div>
+          <div class="silo-door right"></div>
+          <div class="smoke"></div>
+          <div class="missile-assembly">
+              <svg class="missile-body" viewBox="0 0 50 400" xmlns="http://www.w3.org/2000/svg"><path d="M25 0 C 10 50, 10 200, 25 400 C 40 200, 40 50, 25 0 Z" fill="#e2e8f0"/><rect x="15" y="300" width="20" height="50" fill="#94a3b8"/><path d="M0 380 L25 350 L50 380 L25 400 Z" fill="#475569"/><circle cx="25" cy="50" r="10" fill="#000"/></svg>
+              <div class="flame"></div>
+          </div>
+      </div>
+      <div class="log" id="logBox" aria-live="polite" style="height: 200px; margin-top: 10px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<audio id="countdownAudio" src="{{ url_for('static', filename='audio/countdown_beep.mp3') }}" preload="auto"></audio>
+<audio id="launchAudio" src="{{ url_for('static', filename='audio/launch_rumble.mp3') }}" preload="auto"></audio>
+<audio id="abortAudio" src="{{ url_for('static', filename='audio/abort_alarm.mp3') }}" preload="auto"></audio>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const LaunchController = {
+        STATE: { STANDBY: 'STANDBY', ARMED: 'ARMED', COUNTDOWN: 'TERMINAL COUNT', LAUNCHED: 'AWAY', ABORTED: 'ABORTED' },
+        elements: {},
+        countdownTimer: null,
+        currentState: null,
+        isSafetyEngaged: true,
+
+        init() {
+            this.currentState = this.STATE.STANDBY;
+            this.cacheElements();
+            this.bindEvents();
+            this.updateUI();
+            this.log('Permission granted. System online.');
+        },
+        cacheElements() {
+            const ids = ['stateIndicator', 'stateTitle', 'safetySwitch', 'safetyLabel', 'btnArm', 'btnDisarm', 'btnLaunch', 'btnAbort', 'countdown', 'logBox', 'targetId', 'siloContainer', 'countdownAudio', 'launchAudio', 'abortAudio'];
+            ids.forEach(id => { this.elements[id] = document.getElementById(id); });
+        },
+        bindEvents() {
+            this.elements.safetySwitch.addEventListener('click', () => this.toggleSafety());
+            this.elements.btnArm.addEventListener('click', () => this.arm());
+            this.elements.btnDisarm.addEventListener('click', () => this.disarm());
+            this.elements.btnLaunch.addEventListener('click', () => this.launch());
+            this.elements.btnAbort.addEventListener('click', () => this.abort());
+        },
+        setState(newState) {
+            this.currentState = newState;
+            this.updateUI();
+        },
+        updateUI() {
+            const { STATE, currentState, isSafetyEngaged } = this;
+            const { stateIndicator, stateTitle, safetySwitch, safetyLabel, btnArm, btnDisarm, btnLaunch, btnAbort, countdown, siloContainer } = this.elements;
+            stateTitle.textContent = currentState;
+            const isArmedOrActive = [STATE.ARMED, STATE.COUNTDOWN, STATE.LAUNCHED, STATE.ABORTED].includes(currentState);
+            stateIndicator.className = `indicator ${isArmedOrActive ? 'ind-armed' : 'ind-safe'}`;
+            safetySwitch.classList.toggle('on', !isSafetyEngaged);
+            safetyLabel.textContent = isSafetyEngaged ? 'ENGAGED' : 'BYPASSED';
+            btnArm.disabled = isSafetyEngaged || isArmedOrActive;
+            btnDisarm.disabled = currentState === STATE.STANDBY || currentState === STATE.COUNTDOWN || currentState === STATE.LAUNCHED;
+            btnLaunch.disabled = currentState !== STATE.ARMED;
+            btnAbort.disabled = currentState !== STATE.COUNTDOWN;
+            siloContainer.classList.toggle('armed', isArmedOrActive && currentState !== STATE.STANDBY);
+            if (currentState !== STATE.COUNTDOWN) {
+                if (currentState === STATE.LAUNCHED) countdown.textContent = "WEAPON AWAY";
+                else if (currentState === STATE.ABORTED) countdown.textContent = "ABORTED";
+                else countdown.textContent = "STANDBY";
+            }
+        },
+        stopAllAudio() {
+            this.elements.countdownAudio.pause();
+            this.elements.countdownAudio.currentTime = 0;
+            this.elements.launchAudio.pause();
+            this.elements.launchAudio.currentTime = 0;
+        },
+        toggleSafety() {
+            this.isSafetyEngaged = !this.isSafetyEngaged;
+            this.log(`Weapon safety ${this.isSafetyEngaged ? 'ENGAGED.' : 'BYPASSED.'}`);
+            this.updateUI();
+        },
+        arm() {
+            if (this.isSafetyEngaged) {
+                this.log('Arming rejected. Safety must be BYPASSED.');
+                return;
+            }
+            this.log('System ARMED. Silo doors opening.');
+            this.setState(this.STATE.ARMED);
+        },
+        disarm() {
+            this.stopAllAudio();
+            if (this.countdownTimer) clearInterval(this.countdownTimer);
+            this.log('System returned to STANDBY. Silo doors closing.');
+            this.elements.siloContainer.classList.remove('launch');
+            this.setState(this.STATE.STANDBY);
+        },
+        launch() {
+            const target = this.elements.targetId.value.trim() || 'GRID-DELTA-01';
+            this.startCountdown(10, target);
+        },
+        startCountdown(seconds, target) {
+            if (this.countdownTimer) clearInterval(this.countdownTimer);
+            this.setState(this.STATE.COUNTDOWN);
+            this.log(`Terminal countdown initiated. Target: ${target}.`);
+
+            this.elements.countdownAudio.currentTime = 0;
+            this.elements.countdownAudio.play();
+
+            let remaining = seconds;
+            const update = () => {
+                if (remaining < 0) {
+                    clearInterval(this.countdownTimer);
+                    this.performLaunch(target);
+                    return;
+                }
+                this.elements.countdown.textContent = String(remaining).padStart(2, '0');
+                remaining--;
+            };
+            this.countdownTimer = setInterval(update, 1000);
+            update();
+        },
+        performLaunch(target) {
+            this.setState(this.STATE.LAUNCHED);
+            this.log(`<span style="color:var(--accent); font-weight:bold;">*** LAUNCH CONFIRMED. WEAPON AWAY. ***</span>`);
+            this.elements.siloContainer.classList.add('launch');
+            document.body.classList.add('shake');
+            this.elements.launchAudio.play();
+            setTimeout(() => document.body.classList.remove('shake'), 600);
+            setTimeout(() => {
+                if (this.currentState === this.STATE.LAUNCHED) {
+                    this.log('Weapon cycle complete. Resetting silo.');
+                    this.elements.siloContainer.classList.remove('launch');
+                    this.setState(this.STATE.STANDBY);
+                }
+            }, 8000);
+        },
+        abort() {
+            if (this.currentState !== this.STATE.COUNTDOWN) return;
+            clearInterval(this.countdownTimer);
+            this.countdownTimer = null;
+            this.stopAllAudio();
+            this.elements.abortAudio.play();
+            this.setState(this.STATE.ABORTED);
+            this.log('LAUNCH SEQUENCE ABORTED. Returning to ARMED status.');
+            setTimeout(() => { this.setState(this.STATE.ARMED); }, 1500);
+        },
+        log(msg) {
+            const ts = new Date().toLocaleTimeString('en-GB');
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color:var(--muted)">[${ts}]</span> ${msg}`;
+            this.elements.logBox.prepend(logEntry);
+        }
+    };
+    LaunchController.init();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Operative Management Console{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 900px; margin: auto;">
+    <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+            <h2>OPERATIVE MANAGEMENT</h2>
+            <p class="small">Review and purge operative data from the archives.</p>
+        </div>
+        <form action="{{ url_for('cleanup_orphans') }}" method="post" onsubmit="return confirm('This will scan the sensor for fingerprints not linked to any user and delete them. This action cannot be undone. Proceed?');">
+            <button type="submit" class="btn-abort">Purge Orphan Signatures</button>
+        </form>
+    </div>
+
+    {% if users %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <th style="padding: 8px;">Operative Designation</th>
+                <th style="padding: 8px;">Biometric Signature ID</th>
+                <th style="padding: 8px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 8px;">{{ user.display_name }}</td>
+                <td style="padding: 8px;" class="small">{{ user.fingerprint_hash }}</td>
+                <td style="padding: 8px;">
+                    <form action="{{ url_for('delete_user', user_id=user.user_id) }}" method="post" onsubmit="return confirm('Are you sure you want to permanently purge all data for {{ user.display_name }}? This action is irreversible.');">
+                        <button type="submit" class="btn-disarm" style="padding: 4px 8px; font-size: 12px;">Purge</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No operatives currently enrolled in the archives.</p>
+    {% endif %}
+
+    <!-- MODIFIED SECTION WITH LOGOUT BUTTON -->
+    <div class="row" style="margin-top: 2rem; justify-content: center; gap: 1rem;">
+        <a href="{{ url_for('index') }}" class="button btn-disarm" style="text-decoration: none; padding: 8px 16px;">Return to Main Terminal</a>
+        <a href="{{ url_for('logout') }}" class="button btn-abort" style="text-decoration: none; padding: 8px 16px;">Secure Logout</a>
+    </div>
+</div>
+{% endblock %}

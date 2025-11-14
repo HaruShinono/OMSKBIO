@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Enrollment (2/4): Biometric Scan{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 500px; margin: auto; text-align: center;">
+    <h2>ENROLLMENT PROTOCOL (2/4)</h2>
+    <p class="small">Operative '{{ name }}', proceed with fingerprint biometric capture. The process will time out after 30 seconds.</p>
+
+    <div class="controls" style="margin-top: 1.5rem;">
+        <button id="startScanBtn" class="btn-arm btn-wide">INITIATE SCAN</button>
+        <div id="status" class="note" style="margin-top: 1rem; min-height: 50px;">
+            Status: Standby
+        </div>
+
+        <!-- This form is hidden and submitted by JavaScript on success -->
+        <form id="nextStepForm" method="post" action="{{ url_for('enroll_fp') }}" style="display: none;">
+            <button type="submit" class="btn-launch btn-wide">PROCEED: FACIAL RECOGNITION</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const startScanBtn = document.getElementById('startScanBtn');
+    const statusDiv = document.getElementById('status');
+    const nextStepForm = document.getElementById('nextStepForm');
+
+    // Define timeout duration in seconds
+    const SCAN_TIMEOUT_SECONDS = 30;
+
+    let pollingInterval;
+
+    startScanBtn.addEventListener('click', async () => {
+        startScanBtn.disabled = true;
+        startScanBtn.textContent = 'INITIALIZING...';
+        statusDiv.textContent = 'Requesting sensor access...';
+        nextStepForm.style.display = 'none';
+
+        // Timer for timeout
+        let elapsedTime = 0;
+
+        try {
+            const startResponse = await fetch("{{ url_for('start_scan', mode='enroll') }}");
+            const startData = await startResponse.json();
+
+            if (startData.status === 'initiated') {
+                startScanBtn.textContent = 'SCANNING...';
+
+                // The interval function now includes a timeout check
+                pollingInterval = setInterval(() => {
+                    elapsedTime += 1.5; // Our interval is 1.5 seconds
+                    if (elapsedTime > SCAN_TIMEOUT_SECONDS) {
+                        handleScanError("Operation timed out. Please try again.");
+                        return; // Stop executing
+                    }
+                    checkStatus();
+                }, 1500);
+
+            } else {
+                throw new Error(startData.message);
+            }
+        } catch (error) {
+            handleScanError(error.message);
+        }
+    });
+
+    async function checkStatus() {
+        try {
+            const statusResponse = await fetch("{{ url_for('check_scan_status') }}");
+            const data = await statusResponse.json();
+
+            // Translate technical messages into user-friendly instructions
+            let friendlyMessage = data.message;
+            if (data.message === 'WAITING_FINGER_1') friendlyMessage = 'Present finger to sensor.';
+            if (data.message === 'FINGER_AWAY') friendlyMessage = 'Confirmation received. Remove finger.';
+            if (data.message === 'WAITING_FINGER_2') friendlyMessage = 'Present finger again for verification.';
+            statusDiv.textContent = `Status: ${friendlyMessage}`;
+
+            if (data.status === 'success') {
+                handleScanSuccess(data.message);
+            } else if (data.status === 'error') {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            handleScanError(error.message);
+        }
+    }
+
+    function handleScanSuccess(message) {
+        // Always clear the interval on success
+        clearInterval(pollingInterval);
+        statusDiv.innerHTML = `<strong style="color: var(--ok);">SUCCESS: ${message}</strong>`;
+        startScanBtn.style.display = 'none';
+        nextStepForm.style.display = 'block';
+    }
+
+    function handleScanError(message) {
+        // Always clear the interval on error/timeout
+        clearInterval(pollingInterval);
+        statusDiv.innerHTML = `<strong style="color: var(--accent);">ERROR: ${message}</strong>`;
+        startScanBtn.disabled = false;
+        startScanBtn.textContent = 'RE-INITIATE SCAN';
+    }
+});
+</script>
+{% endblock %}

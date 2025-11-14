@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Authentication (2/3): Facial Verification{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 500px; margin: auto; text-align: center;">
+    <h2>AUTHENTICATION (2/3)</h2>
+    <p class="small">Present face for verification. The system will auto-analyze upon capture.</p>
+
+    <div class="controls" style="margin-top: 1.5rem;">
+        <div style="position: relative; height: 280px; background: #000; border-radius: 8px; overflow: hidden;">
+            <video id="webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+            <img id="capturedImage" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;"/>
+        </div>
+
+        <canvas id="canvas" style="display:none;"></canvas>
+
+        <div class="row" style="justify-content: center; gap: 1rem; margin-top: 1rem;">
+            <button id="captureBtn" class="btn-arm" style="width: 250px;" disabled>CAPTURE & VERIFY</button>
+            <button id="recaptureBtn" class="btn-disarm" style="width: 150px; display:none;">RECAPTURE</button>
+        </div>
+
+        <div id="status" class="note" style="margin-top: 1rem; min-height: 50px;">
+            Status: Initializing camera...
+        </div>
+
+        <!-- This link is hidden until analysis is successful -->
+        <a href="#" id="proceedLink" class="button btn-launch btn-wide" style="margin-top: 1rem; display: none; text-decoration: none;">PROCEED TO VOCAL VERIFICATION</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const webcamElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('canvas');
+    const capturedImageElement = document.getElementById('capturedImage');
+    const captureBtn = document.getElementById('captureBtn');
+    const recaptureBtn = document.getElementById('recaptureBtn');
+    const proceedLink = document.getElementById('proceedLink');
+    const statusDiv = document.getElementById('status');
+
+    let stream = null;
+
+    async function setupWebcam() {
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            webcamElement.srcObject = stream;
+            webcamElement.style.display = 'block';
+            capturedImageElement.style.display = 'none';
+            statusDiv.textContent = 'Camera online. Awaiting capture for verification.';
+            captureBtn.disabled = false;
+            captureBtn.style.display = 'block';
+            recaptureBtn.style.display = 'none';
+            proceedLink.style.display = 'none';
+        } catch (err) {
+            statusDiv.textContent = 'CRITICAL ERROR: Camera access denied or not available.';
+        }
+    }
+
+    captureBtn.addEventListener('click', () => {
+        canvasElement.width = webcamElement.videoWidth;
+        canvasElement.height = webcamElement.videoHeight;
+        const context = canvasElement.getContext('2d');
+        context.drawImage(webcamElement, 0, 0, canvasElement.width, canvasElement.height);
+
+        const dataUrl = canvasElement.toDataURL('image/jpeg');
+        capturedImageElement.src = dataUrl;
+
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        webcamElement.style.display = 'none';
+        capturedImageElement.style.display = 'block';
+        captureBtn.style.display = 'none';
+        recaptureBtn.style.display = 'block';
+        recaptureBtn.disabled = true;
+
+        canvasElement.toBlob(blob => {
+            analyzeAndVerify(blob);
+        }, 'image/jpeg');
+    });
+
+    recaptureBtn.addEventListener('click', setupWebcam);
+
+    async function analyzeAndVerify(imageBlob) {
+        if (!imageBlob) return;
+
+        statusDiv.textContent = 'Transmitting facial scan for verification...';
+
+        const formData = new FormData();
+        formData.append('face', imageBlob, 'operative_face.jpg');
+
+        try {
+            const response = await fetch("{{ url_for('login_face') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success' && result.token) {
+                statusDiv.innerHTML = `<strong style="color: var(--ok);">VERIFICATION SUCCESS. Proceeding to final factor.</strong>`;
+                recaptureBtn.style.display = 'none';
+
+                // --- DEFINITIVE FIX IS HERE ---
+                // Construct the correct URL with the token and navigate to the VOICE step.
+                const nextUrl = "{{ url_for('login_voice') }}" + `?token=${result.token}`;
+
+                // We show a button instead of auto-redirecting to give the user control.
+                proceedLink.href = nextUrl;
+                proceedLink.style.display = 'block';
+
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `<strong style="color: var(--accent);">VERIFICATION FAILED: ${error.message}</strong>`;
+            recaptureBtn.disabled = false;
+        }
+    }
+
+    setupWebcam();
+});
+</script>
+{% endblock %}

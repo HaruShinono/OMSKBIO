@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Enrollment (1/4): Designation{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 500px; margin: auto;">
+    <h2>ENROLLMENT PROTOCOL (1/4)</h2>
+    <p class="small">Enter new operative's designation.</p>
+    <form method="post" class="controls" style="margin-top: 1.5rem;">
+        <label for="display_name">Operative Designation:</label>
+        <input type="text" id="display_name" name="display_name" required placeholder="e.g., Operative Sokolov">
+        <button type="submit" class="btn-arm btn-wide">PROCEED</button>
+    </form>
+</div>
+{% endblock %}

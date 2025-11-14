@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Enrollment (4/4): Vocal Engram Capture{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 600px; margin: auto; text-align: center;">
+    <h2>ENROLLMENT PROTOCOL (4/4)</h2>
+    <p class="small">Provide 3 vocal samples for a high-fidelity engram. State the passphrase "The Great Trial awaits" for each recording.</p>
+
+    <!-- Container for the dynamic recorder modules -->
+    <div id="sampleContainer" class="controls" style="margin-top: 1.5rem; gap: 1.5rem; text-align: left;">
+        <!-- JavaScript will generate 3 recording modules here -->
+    </div>
+
+    <!-- Main status display -->
+    <div id="status" class="note" style="margin-top: 1.5rem; min-height: 50px;">
+        Status: Awaiting 3 valid vocal samples.
+    </div>
+
+    <!-- Final submission button -->
+    <button id="submitBtn" class="btn-launch btn-wide" style="margin-top: 1rem;" disabled>COMPLETE ENROLLMENT</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const sampleContainer = document.getElementById('sampleContainer');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusDiv = document.getElementById('status');
+    const SAMPLES_REQUIRED = 3;
+
+    // This array will hold the final Blob data for each recording
+    let audioBlobs = new Array(SAMPLES_REQUIRED).fill(null);
+
+    // Function to check if all samples have been recorded
+    function checkAllSamplesRecorded() {
+        const allRecorded = audioBlobs.every(blob => blob !== null);
+        submitBtn.disabled = !allRecorded;
+        if (allRecorded) {
+            statusDiv.textContent = 'All samples captured. Ready to complete enrollment.';
+        }
+    }
+
+    // Function to dynamically create a recorder module UI
+    function createRecorderModule(index) {
+        const moduleId = `recorder-${index}`;
+        const module = document.createElement('div');
+        module.className = 'row';
+        module.style.padding = '10px';
+        module.style.border = '1px solid rgba(255,255,255,0.05)';
+        module.style.borderRadius = '8px';
+
+        module.innerHTML = `
+            <div class="flex-grow">
+                <div class="font-bold">Sample ${index + 1} of ${SAMPLES_REQUIRED}</div>
+                <div class="small" id="${moduleId}-status">Status: Not Recorded</div>
+                <audio id="${moduleId}-audio" controls style="width: 100%; margin-top: 8px; display: none; height: 30px;"></audio>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button id="${moduleId}-record" class="btn-arm" style="padding: 4px 8px;">Record</button>
+                <button id="${moduleId}-stop" class="btn-abort" style="padding: 4px 8px;" disabled>Stop</button>
+            </div>
+        `;
+        sampleContainer.appendChild(module);
+
+        const recordBtn = document.getElementById(`${moduleId}-record`);
+        const stopBtn = document.getElementById(`${moduleId}-stop`);
+        const audioEl = document.getElementById(`${moduleId}-audio`);
+        const statusEl = document.getElementById(`${moduleId}-status`);
+
+        let mediaRecorder;
+        let audioChunks = [];
+
+        recordBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioBlobs[index] = audioBlob; // Store the final blob
+
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioEl.src = audioUrl;
+                    audioEl.style.display = 'block';
+
+                    recordBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    statusEl.innerHTML = `<span style="color: var(--ok)">Sample Recorded</span>`;
+
+                    checkAllSamplesRecorded(); // Check if the final button can be enabled
+                };
+
+                mediaRecorder.start();
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+                audioEl.style.display = 'none';
+                statusEl.textContent = 'Recording...';
+            } catch (err) {
+                statusEl.innerHTML = `<span style="color: var(--accent)">Mic Error</span>`;
+                statusDiv.textContent = 'ERROR: Microphone access was denied or is unavailable.';
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        });
+    }
+
+    // Create the three recorder modules when the page loads
+    for (let i = 0; i < SAMPLES_REQUIRED; i++) {
+        createRecorderModule(i);
+    }
+
+    // Event listener for the final submission button
+    submitBtn.addEventListener('click', async () => {
+        submitBtn.disabled = true;
+        statusDiv.textContent = 'Transmitting all vocal samples to archives... Please wait.';
+
+        const formData = new FormData();
+        audioBlobs.forEach((blob, index) => {
+            if (blob) {
+                // Append each blob with the same field name 'voice_samples'
+                formData.append('voice_samples', blob, `sample_${index + 1}.wav`);
+            }
+        });
+
+        try {
+            const response = await fetch("{{ url_for('enroll_voice') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                statusDiv.innerHTML = `<strong style="color: var(--ok);">SUCCESS: All-factor enrollment complete.</strong>`;
+                setTimeout(() => {
+                    window.location.href = result.redirect_url;
+                }, 2000);
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            statusDiv.innerHTML = `<strong style="color: var(--accent);">ERROR: ${error.message}</strong>`;
+            submitBtn.disabled = false; // Re-enable on failure
+        }
+    });
+});
+</script>
+{% endblock %}

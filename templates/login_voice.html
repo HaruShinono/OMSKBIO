@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Authentication (3/3): Vocal Verification{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 500px; margin: auto; text-align: center;">
+    <h2>AUTHENTICATION (3/3)</h2>
+    <p class="small">This is the final verification step. Record a vocal sample. State the passphrase: <strong style="color: var(--text);">"The Great Trial awaits."</strong></p>
+
+    <div class="controls" style="margin-top: 1.5rem;">
+        <!-- Recording Controls -->
+        <div class="row" style="justify-content: center; gap: 1rem;">
+            <button id="recordBtn" class="btn-arm" style="width: 150px;">RECORD</button>
+            <button id="stopBtn" class="btn-abort" style="width: 150px;" disabled>STOP</button>
+        </div>
+
+        <!-- Status and Playback -->
+        <div id="status" class="note" style="margin-top: 1rem; min-height: 50px;">
+            Status: Standby. Awaiting record command.
+        </div>
+        <audio id="audioPlayback" controls style="width: 100%; margin-top: 1rem; display: none; height: 30px;"></audio>
+
+        <!-- Submission Button -->
+        <button id="submitBtn" class="btn-launch btn-wide" style="margin-top: 1rem; display: none;">AUTHENTICATE</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusDiv = document.getElementById('status');
+    const audioPlayback = document.getElementById('audioPlayback');
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob = null;
+
+    recordBtn.addEventListener('click', async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            statusDiv.textContent = 'CRITICAL ERROR: Media devices API not supported.';
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            audioBlob = null;
+
+            mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+
+            mediaRecorder.onstop = () => {
+                audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayback.src = audioUrl;
+                audioPlayback.style.display = 'block';
+
+                recordBtn.disabled = false;
+                stopBtn.disabled = true;
+                submitBtn.style.display = 'block';
+                statusDiv.textContent = 'Vocal sample captured. Review and submit for verification.';
+            };
+
+            mediaRecorder.start();
+            recordBtn.disabled = true;
+            stopBtn.disabled = false;
+            submitBtn.style.display = 'none';
+            audioPlayback.style.display = 'none';
+            statusDiv.textContent = 'RECORDING LIVE... State the passphrase.';
+
+        } catch (err) {
+            statusDiv.textContent = 'ERROR: Microphone access denied or not available.';
+            console.error("Mic error:", err);
+        }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+    });
+
+    submitBtn.addEventListener('click', async () => {
+        if (!audioBlob) {
+            statusDiv.textContent = 'No vocal sample to submit.';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        statusDiv.textContent = 'Transmitting vocal sample for verification...';
+
+        const formData = new FormData();
+        formData.append('voice', audioBlob, 'login_sample.wav');
+
+        try {
+            const response = await fetch("{{ url_for('login_voice') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                statusDiv.innerHTML = `<strong style="color: var(--ok);">SUCCESS: All-factor authentication complete. Access granted.</strong>`;
+                setTimeout(() => {
+                    window.location.href = result.redirect_url;
+                }, 1500);
+            } else {
+                // On failure, the backend clears the session and provides a URL to redirect to.
+                // We show the message and then follow the redirect.
+                statusDiv.innerHTML = `<strong style="color: var(--accent);">FAILURE: ${result.message}</strong>`;
+                 setTimeout(() => {
+                    window.location.href = result.redirect_url;
+                }, 2500);
+            }
+        } catch (error) {
+            statusDiv.textContent = `ERROR: Transmission failed. ${error.message}`;
+            submitBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

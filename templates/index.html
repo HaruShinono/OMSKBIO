@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Central Command Access{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 600px; margin: auto; text-align: center;">
+    <h2>OMSK CENTRAL COMMAND</h2>
+    <p class="small">BIOMETRIC AUTHENTICATION REQUIRED. UNAUTHORIZED ACCESS IS PROHIBITED.</p>
+
+    <div style="margin: 2rem 0;">
+        <p>OPERATIVES IN ARCHIVES: <strong style="font-size: 1.2em;">{{ users_count }}</strong></p>
+    </div>
+
+    <div class="row" style="justify-content: center; gap: 1rem;">
+        <a href="{{ url_for('login_fp') }}" class="button btn-arm" style="text-decoration: none; padding: 12px 24px;">INITIATE AUTHENTICATION</a>
+        <a href="{{ url_for('enroll_index') }}" class="button btn-disarm" style="text-decoration: none; padding: 12px 24px;">ENROLL NEW OPERATIVE</a>
+    </div>
+
+    <!-- NEW MANAGEMENT LINK -->
+    {% if session.user_id %}
+    <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+        <a href="{{ url_for('manage_users') }}" class="button btn-disarm" style="text-decoration: none;">Operative Management Console</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

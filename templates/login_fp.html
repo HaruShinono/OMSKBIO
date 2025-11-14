@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Authentication (1/3): Fingerprint{% endblock %}
+
+{% block content %}
+<div class="panel" style="max-width: 500px; margin: auto; text-align: center;">
+    <h2>AUTHENTICATION (1/3)</h2>
+    <p class="small">Present fingerprint for identity verification. The process will time out after 30 seconds.</p>
+
+    <div class="controls" style="margin-top: 1.5rem;">
+        <button id="startScanBtn" class="btn-arm btn-wide">INITIATE VERIFICATION</button>
+        <div id="status" class="note" style="margin-top: 1rem; min-height: 50px;">Status: Standby</div>
+
+        <!-- This button triggers a JS redirect on success -->
+        <button id="proceedBtn" class="btn-launch btn-wide" style="display: none;">PROCEED TO FACIAL VERIFICATION</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const startScanBtn = document.getElementById('startScanBtn');
+    const statusDiv = document.getElementById('status');
+    const proceedBtn = document.getElementById('proceedBtn');
+
+    const SCAN_TIMEOUT_SECONDS = 30;
+    let pollingInterval = null;
+
+    function stopPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+
+    startScanBtn.addEventListener('click', async () => {
+        stopPolling();
+
+        startScanBtn.disabled = true;
+        startScanBtn.textContent = 'INITIALIZING...';
+        statusDiv.textContent = 'Requesting sensor access...';
+        proceedBtn.style.display = 'none';
+
+        let elapsedTime = 0;
+
+        try {
+            const startResponse = await fetch("{{ url_for('start_scan', mode='login') }}");
+            const startData = await startResponse.json();
+
+            if (startData.status === 'initiated') {
+                startScanBtn.textContent = 'AWAITING VERIFICATION...';
+
+                pollingInterval = setInterval(() => {
+                    elapsedTime += 1.5;
+                    if (elapsedTime > SCAN_TIMEOUT_SECONDS) {
+                        handleScanError("Operation timed out. Please try again.");
+                        return;
+                    }
+                    checkStatus();
+                }, 1500);
+
+            } else {
+                throw new Error(startData.message);
+            }
+        } catch (error) {
+            handleScanError(error.message);
+        }
+    });
+
+    async function checkStatus() {
+        if (!pollingInterval) return;
+
+        try {
+            const statusResponse = await fetch("{{ url_for('check_scan_status') }}");
+            const data = await statusResponse.json();
+
+            let friendlyMessage = data.message;
+            if (data.message === 'WAITING_FINGER') {
+                friendlyMessage = 'Present finger for verification.';
+            }
+            statusDiv.textContent = `Status: ${friendlyMessage}`;
+
+            if (data.status === 'success') {
+                handleScanSuccess(data.message);
+            } else if (data.status === 'error') {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            handleScanError(error.message);
+        }
+    }
+
+    function handleScanSuccess(message) {
+        stopPolling();
+        statusDiv.innerHTML = `<strong style="color: var(--ok);">SUCCESS: ${message}</strong>`;
+        startScanBtn.style.display = 'none';
+        proceedBtn.style.display = 'block';
+    }
+
+    function handleScanError(message) {
+        stopPolling();
+        statusDiv.innerHTML = `<strong style="color: var(--accent);">VERIFICATION FAILED: ${message}</strong>`;
+
+        setTimeout(() => {
+            startScanBtn.disabled = false;
+            startScanBtn.textContent = 'RE-INITIATE VERIFICATION';
+            statusDiv.textContent = 'Status: Standby for retry.';
+        }, 2000);
+    }
+
+    proceedBtn.addEventListener('click', () => {
+        // This navigation now works because the session is guaranteed to be set by the API.
+        window.location.href = "{{ url_for('login_face') }}";
+    });
+});
+</script>
+{% endblock %}

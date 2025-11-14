@@ -1,0 +1,107 @@
+/* static/css/main.css */
+:root {
+  --bg: #0b0f19;
+  --panel: #0f1724;
+  --accent: #ff5a5a;
+  --ok: #39d98a;
+  --text: #e6eef8;
+  --muted: #98a0b3;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #091021 0%, #06101a 100%);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* Flash Messages */
+.flash {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+}
+.flash.success { background-color: rgba(57, 217, 138, 0.2); color: var(--ok); }
+.flash.danger { background-color: rgba(255, 90, 90, 0.2); color: var(--accent); }
+.flash.warning { background-color: rgba(255, 216, 168, 0.2); color: #ffd8a8; }
+.flash.info { background-color: rgba(106, 163, 255, 0.2); color: #6aa3ff; }
+
+/* Layout */
+.container {
+  width: 100%;
+  max-width: 1100px;
+}
+.panel {
+  background: linear-gradient(180deg, var(--panel), #0b1728);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(2, 6, 12, 0.6);
+  margin-top: 1.5rem;
+}
+
+/* Nuclear Page Specific Layout */
+.nuclear-container {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 20px;
+}
+
+/* General Controls */
+.controls { display: flex; flex-direction: column; gap: 12px; }
+button {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color .2s, opacity .2s;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.btn-wide { width: 100%; }
+.btn-arm { background: linear-gradient(90deg, #2b77ff, #1a5bd6); color: white; }
+.btn-disarm { background: #222a35; color: var(--muted); }
+.btn-launch { background: linear-gradient(90deg, #ff6b3b, #ff3b6b); color: white; }
+.btn-abort { background: #111218; color: #ff8b8b; border: 1px solid rgba(255, 80, 80, 0.08); }
+input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 0;
+  background: #071026;
+  color: var(--text);
+}
+
+/* Specific Components from Nuclear page */
+.status { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.indicator { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 8px rgba(0, 0, 0, 0.6) inset; }
+.ind-safe { background: #6aa3ff; box-shadow: 0 0 12px rgba(106, 163, 255, 0.18); }
+.ind-armed { background: var(--accent); box-shadow: 0 0 14px rgba(255, 90, 90, 0.18); }
+.status .title { font-weight: 600; }
+.switch-row { display: flex; gap: 10px; align-items: center; }
+.switch { width: 56px; height: 30px; border-radius: 20px; background: #222a35; position: relative; padding: 3px; cursor: pointer; }
+.knob { width: 24px; height: 24px; border-radius: 50%; background: white; position: absolute; top: 3px; left: 3px; transition: all .18s; }
+.switch.on { background: linear-gradient(90deg, #39d98a, #0bb86b); }
+.switch.on .knob { left: 29px; }
+.countdown { font-family: 'Roboto Mono', monospace; font-size: 48px; text-align: center; padding: 8px 0; }
+.telemetry { margin-top: 12px; font-size: 13px; color: var(--muted); background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+.log { height: 420px; overflow: auto; padding: 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.18); font-family: monospace; font-size: 13px; color: #dbe9ff; }
+.map-sim { height: 260px; border-radius: 8px; background: linear-gradient(180deg, rgba(41, 60, 81, 0.35), rgba(6, 12, 22, 0.3)); display: flex; align-items: center; justify-content: center; color: var(--muted); border: 1px dashed rgba(255, 255, 255, 0.03); }
+.small { font-size: 12px; color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; }
+.kbd { background: #0b1220; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.04); }
+footer { font-size: 12px; color: var(--muted); text-align: center; padding-top: 8px; }
+.note { font-size: 13px; color: #ffd8a8; background: rgba(255, 220, 160, 0.04); padding: 8px; border-radius: 8px; }
+.flex-grow { flex: 1; }
+.text-right { text-align: right; }
+.font-bold { font-weight: 700; }
