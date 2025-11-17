@@ -148,7 +148,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const LaunchController = {
-        STATE: { STANDBY: 'STANDBY', ARMED: 'ARMED', COUNTDOWN: 'TERMINAL COUNT', LAUNCHED: 'AWAY', ABORTED: 'ABORTED' },
+        STATE: { STANDBY: 'STANDBY', ARMED: 'ARMED', COUNTDOWN: 'TERMINAL COUNT', LAUNCHED: 'AWAY', RELOADING: 'RELOADING' },
         elements: {},
         countdownTimer: null,
         currentState: null,
@@ -179,19 +179,33 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI() {
             const { STATE, currentState, isSafetyEngaged } = this;
             const { stateIndicator, stateTitle, safetySwitch, safetyLabel, btnArm, btnDisarm, btnLaunch, btnAbort, countdown, siloContainer } = this.elements;
-            stateTitle.textContent = currentState;
-            const isArmedOrActive = [STATE.ARMED, STATE.COUNTDOWN, STATE.LAUNCHED, STATE.ABORTED].includes(currentState);
+            
+            // Use a more descriptive state title if needed
+            let displayState = currentState;
+            if (currentState === STATE.RELOADING) {
+                displayState = "ARMED (RELOADING)";
+            }
+            stateTitle.textContent = displayState;
+            
+            const isArmedOrActive = [STATE.ARMED, STATE.COUNTDOWN, STATE.LAUNCHED, STATE.RELOADING, STATE.ABORTED].includes(currentState);
             stateIndicator.className = `indicator ${isArmedOrActive ? 'ind-armed' : 'ind-safe'}`;
+
             safetySwitch.classList.toggle('on', !isSafetyEngaged);
             safetyLabel.textContent = isSafetyEngaged ? 'ENGAGED' : 'BYPASSED';
+
+            // Disable buttons during active sequences
+            const isBusy = [STATE.COUNTDOWN, STATE.LAUNCHED, STATE.RELOADING].includes(currentState);
             btnArm.disabled = isSafetyEngaged || isArmedOrActive;
-            btnDisarm.disabled = currentState === STATE.STANDBY || currentState === STATE.COUNTDOWN || currentState === STATE.LAUNCHED;
-            btnLaunch.disabled = currentState !== STATE.ARMED;
+            btnDisarm.disabled = isBusy || currentState === STATE.STANDBY;
+            btnLaunch.disabled = isBusy || currentState !== STATE.ARMED;
             btnAbort.disabled = currentState !== STATE.COUNTDOWN;
-            siloContainer.classList.toggle('armed', isArmedOrActive && currentState !== STATE.STANDBY);
+
+            siloContainer.classList.toggle('armed', isArmedOrActive);
+            
             if (currentState !== STATE.COUNTDOWN) {
                 if (currentState === STATE.LAUNCHED) countdown.textContent = "WEAPON AWAY";
                 else if (currentState === STATE.ABORTED) countdown.textContent = "ABORTED";
+                else if (currentState === STATE.RELOADING) countdown.textContent = "RELOADING...";
                 else countdown.textContent = "STANDBY";
             }
         },
@@ -229,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.countdownTimer) clearInterval(this.countdownTimer);
             this.setState(this.STATE.COUNTDOWN);
             this.log(`Terminal countdown initiated. Target: ${target}.`);
-
+            
             this.elements.countdownAudio.currentTime = 0;
             this.elements.countdownAudio.play();
 
@@ -252,14 +266,26 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elements.siloContainer.classList.add('launch');
             document.body.classList.add('shake');
             this.elements.launchAudio.play();
+            
             setTimeout(() => document.body.classList.remove('shake'), 600);
-            setTimeout(() => {
+            
+            // After launch, wait before starting the "reload" process.
+            setTimeout(() => { 
                 if (this.currentState === this.STATE.LAUNCHED) {
-                    this.log('Weapon cycle complete. Resetting silo.');
+                    this.log('Impact confirmed. Beginning silo reload sequence.');
+                    this.setState(this.STATE.RELOADING);
+                    // Remove the 'launch' class to reset the missile animation without closing doors
                     this.elements.siloContainer.classList.remove('launch');
-                    this.setState(this.STATE.STANDBY);
+
+                    // After reloading is "complete", return to armed standby.
+                    setTimeout(() => {
+                        if (this.currentState === this.STATE.RELOADING) {
+                            this.log('Reload complete. System is ARMED and ready.');
+                            this.setState(this.STATE.ARMED);
+                        }
+                    }, 2000); // 2 seconds for "reloading"
                 }
-            }, 8000);
+            }, 6000); // 6 seconds flight time
         },
         abort() {
             if (this.currentState !== this.STATE.COUNTDOWN) return;
