@@ -1,4 +1,4 @@
-// OMSK Biometric Controller - FINAL VERSION with Management Features
+// OMSK Biometric Controller - 3rd VERSION
 
 #include <Adafruit_Fingerprint.h>
 
@@ -37,7 +37,7 @@ void loop() {
   }
 }
 
-// --- NEW MANAGEMENT FUNCTIONS ---
+// --- MANAGEMENT FUNCTIONS ---
 
 void deleteFingerprint(String command) {
   // Extracts the ID from a command like "DELETE_FINGER:14"
@@ -56,7 +56,6 @@ void deleteFingerprint(String command) {
 void listFingerprints() {
   finger.getTemplateCount();
   int templateCount = finger.templateCount;
-  
   // The library doesn't provide a direct list of IDs, so we check each slot.
   // This is a reliable way to find all stored templates, even if there are gaps.
   for (int i = 1; i <= 127; i++) {
@@ -70,7 +69,7 @@ void listFingerprints() {
 }
 
 
-// --- EXISTING PROTOCOLS (Unchanged) ---
+// --- EXISTING PROTOCOLS ---
 void enrollFingerprint() {
   int id_to_enroll = nextAvailableId;
   Serial.print("ENROLL_STARTING:");
