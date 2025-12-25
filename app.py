@@ -29,7 +29,7 @@ os.makedirs(FACE_DB_PATH, exist_ok=True)
 
 VOICE_THRESHOLD = 0.80
 EMBEDDING_DIM = 192
-
+FACE_THRESSHOLD = 0.30
 SERIAL_PORT = 'COM3'
 BAUD_RATE = 9600
 ser = None
@@ -280,8 +280,7 @@ def login_face():
 
         if os.path.exists(reference_image_path):
             try:
-                CUSTOM_THRESHOLD = 0.30
-
+                
                 result = DeepFace.verify(
                     img1_path=reference_image_path,
                     img2_path=candidate_temp_path,
@@ -289,10 +288,10 @@ def login_face():
                 )
 
                 distance = result['distance']
-                is_verified = distance <= CUSTOM_THRESHOLD
+                is_verified = distance <= FACE_THRESSHOLD
 
                 print(
-                    f"  > DeepFace Result: Verified={is_verified}, Distance={distance:.4f}, Threshold={CUSTOM_THRESHOLD:.2f}")
+                    f"  > DeepFace Result: Verified={is_verified}, Distance={distance:.4f}, Threshold={FACE_THRESSHOLD:.2f}")
 
             except Exception as e:
                 print(f"  > FAILURE: DeepFace processing error: {e}")

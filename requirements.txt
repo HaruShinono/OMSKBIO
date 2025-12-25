@@ -1,0 +1,10 @@
+python==3.11
+Flask==3.0.0
+pyserial==3.5
+deepface==0.0.79
+speechbrain==0.5.16
+opencv-python-headless==4.8.0.76
+torch==2.1.0
+torchaudio==2.1.0
+pydub==0.25.1
+numpy==1.26.2
