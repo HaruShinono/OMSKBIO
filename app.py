@@ -27,9 +27,9 @@ VOICE_DB_FILE = os.path.join(BASE_DIR, "voice_database.csv")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(FACE_DB_PATH, exist_ok=True)
 
-VOICE_THRESHOLD = 0.80
+VOICE_THRESHOLD = 0.75
 EMBEDDING_DIM = 192
-FACE_THRESSHOLD = 0.30
+FACE_THRESSHOLD = 0.70
 SERIAL_PORT = 'COM3'
 BAUD_RATE = 9600
 ser = None

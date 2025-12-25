@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             siloContainer.classList.toggle('armed', isArmedOrActive);
             
             if (currentState !== STATE.COUNTDOWN) {
-                if (currentState === STATE.LAUNCHED) countdown.textContent = "WEAPON AWAY";
+                if (currentState === STATE.LAUNCHED) countdown.textContent = "MISSILE AWAY";
                 else if (currentState === STATE.ABORTED) countdown.textContent = "ABORTED";
                 else if (currentState === STATE.RELOADING) countdown.textContent = "RELOADING...";
                 else countdown.textContent = "STANDBY";
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         performLaunch(target) {
             this.setState(this.STATE.LAUNCHED);
-            this.log(`<span style="color:var(--accent); font-weight:bold;">*** LAUNCH CONFIRMED. WEAPON AWAY. ***</span>`);
+            this.log(`<span style="color:var(--accent); font-weight:bold;">*** LAUNCH CONFIRMED. MISSILE AWAY. ***</span>`);
             this.elements.siloContainer.classList.add('launch');
             document.body.classList.add('shake');
             this.elements.launchAudio.play();
