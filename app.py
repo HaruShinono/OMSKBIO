@@ -29,7 +29,7 @@ os.makedirs(FACE_DB_PATH, exist_ok=True)
 
 VOICE_THRESHOLD = 0.75
 EMBEDDING_DIM = 192
-FACE_THRESSHOLD = 0.30 #rvs
+FACE_DISTANCE = 0.30 #rvs
 SERIAL_PORT = 'COM3'
 BAUD_RATE = 9600
 ser = None
@@ -288,10 +288,10 @@ def login_face():
                 )
 
                 distance = result['distance']
-                is_verified = distance <= FACE_THRESSHOLD
+                is_verified = distance <= FACE_DISTANCE
 
                 print(
-                    f"  > DeepFace Result: Verified={is_verified}, Distance={distance:.4f}, Threshold={FACE_THRESSHOLD:.2f}")
+                    f"  > DeepFace Result: Verified={is_verified}, Distance={distance:.4f}, Threshold={FACE_DISTANCE:.2f}")
 
             except Exception as e:
                 print(f"  > FAILURE: DeepFace processing error: {e}")
